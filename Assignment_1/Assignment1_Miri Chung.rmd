@@ -1,0 +1,52 @@
+---
+title: "Assignment1"
+author: "Miri Chung"
+output: html_document
+---
+
+**1. Download a dataset from the web. You may use any source, but specify the source in your code. Also ensure that the data has a mix of quantitative and qualitative (categorical) variables.**
+
+**Solution:**
+```{r}
+#1. Financial well-being survey dataset from Consumer Financial Protection Bureau, https://www.consumerfinance.gov/. 
+```
+
+**2. Import the dataset into R**
+
+**Solution:**
+```{r}
+setwd("D:\\Cloud\\Kent_Google Drive\\Kent Class\\MIS 64060 Fundamentals of Machine Learning\\Assignment\\Assignment 1") #set the working directory
+library(readr)
+mydata <- read_csv("D:/Cloud/Kent_Google Drive/Kent Class/MIS 64060 Fundamentals of Machine Learning/Assignment/Assignment 1/NFWBS_PUF_2016_data.csv") # rename the dataset for the future reference
+```
+
+**3. Print out descriptive statistics for a selection of quantitative and categorical variables.**
+
+**Solution:**
+```{r}
+summary (mydata$fpl) # Descriptive statistics (mean,median,25th and 75th quartiles,min,max)of categorical variable =fpl, Poverty Status
+library(pastecs)
+stat.desc (mydata$fpl) # Descriptive statistics (nbr.val, nbr.null, nbr.na, min max, range, sum, median, mean, SE.mean, CI.mean, var, std.dev, coef.var) of categorical variable =fpl, Poverty Status
+summary (mydata$FSscore) # Descriptive statistics (mean,median,25th and 75th quartiles,min,max)of quantitative variable = FSscore, finanacial well-being scale score
+stat.desc (mydata$FSscore) # Descriptive statistics (nbr.val, nbr.null, nbr.na, min max, range, sum, median, mean, SE.mean, CI.mean, var, std.dev, coef.var) of quantitative variable = FSscore, finanacial well-being scale score
+
+```
+
+**4. Transform at least one variable. It doesn't matter what the transformation is.**
+
+**Solution:**
+```{r}
+library(dplyr)
+mydata$MILITARY<-recode(mydata$MILITARYHistory, "Refused"=-1, "No"=0, "Yes"=1) # record string value of MILITARYhistory to numeric value
+mydata$SWBsum <- mydata$SWB_1 + mydata$SWB_2 + mydata$SWB_3 # creating SWBsum by summing three variables, SWB_1, SWB_2, and SWB_3
+mydata$fpl2 <- mydata$fpl + 3 # transforming the values of variable, fpl, by adding 3.
+```
+
+**5. Plot at least one quantitative variable, and one scatterplot**
+
+**Solution:**
+```{r}
+hist (mydata$FSscore) # A frequency histogram of the continuous variable FSscore (finanacial well-being scale score) from the data frame mydata
+plot (mydata$FSscore) # A plot of the variable FSscore 
+plot (mydata$FSscore, mydata$FWBscore) # A scatterplot of the variable FSscore and FWBscore
+```
