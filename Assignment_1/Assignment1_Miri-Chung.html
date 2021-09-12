@@ -175,9 +175,9 @@ pre code {
 <pre class="r"><code>#1. Financial well-being survey dataset from Consumer Financial Protection Bureau, https://www.consumerfinance.gov/. </code></pre>
 <p><strong>2. Import the dataset into R</strong></p>
 <p><strong>Solution:</strong></p>
-<pre class="r"><code>setwd(&quot;D:\\Cloud\\Kent_Google Drive\\Kent Class\\MIS 64060 Fundamentals of Machine Learning\\Assignment\\Assignment 1&quot;) #set the working directory
+<pre class="r"><code>setwd(&quot;D:\\Cloud\\Kent_Google Drive\\Kent Class\\MIS 64060 Fundamentals of Machine Learning\\Assignment\\Assignment 1\\Submission&quot;) #set the working directory
 library(readr)
-mydata &lt;- read_csv(&quot;D:/Cloud/Kent_Google Drive/Kent Class/MIS 64060 Fundamentals of Machine Learning/Assignment/Assignment 1/NFWBS_PUF_2016_data.csv&quot;) # rename the dataset for the future reference</code></pre>
+mydata &lt;- read_csv(&quot;D:/Cloud/Kent_Google Drive/Kent Class/MIS 64060 Fundamentals of Machine Learning/Assignment/Assignment 1/Submission/NFWBS_PUF_2016_data.csv&quot;) # rename the dataset for the future reference</code></pre>
 <pre><code>## Rows: 6394 Columns: 217</code></pre>
 <pre><code>## -- Column specification --------------------------------------------------------
 ## Delimiter: &quot;,&quot;
@@ -223,7 +223,7 @@ stat.desc (mydata$fpl) # Descriptive statistics (nbr.val, nbr.null, nbr.na, min 
 <pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>mydata$MILITARY&lt;-recode(mydata$MILITARYHistory, &quot;Refused&quot;=-1, &quot;No&quot;=0, &quot;Yes&quot;=1) # record string value of MILITARYhistory to numeric value
+<pre class="r"><code>mydata$MILITARY&lt;-recode(mydata$MILITARYHistory, &quot;Refused&quot;=-1, &quot;No&quot;=0, &quot;Yes&quot;=1) # recode string value of MILITARYhistory to numeric value
 mydata$SWBsum &lt;- mydata$SWB_1 + mydata$SWB_2 + mydata$SWB_3 # creating SWBsum by summing three variables, SWB_1, SWB_2, and SWB_3
 mydata$fpl2 &lt;- mydata$fpl + 3 # transforming the values of variable, fpl, by adding 3.</code></pre>
 <p><strong>5. Plot at least one quantitative variable, and one scatterplot</strong></p>

@@ -15,9 +15,10 @@ output: html_document
 
 **Solution:**
 ```{r}
-setwd("D:\\Cloud\\Kent_Google Drive\\Kent Class\\MIS 64060 Fundamentals of Machine Learning\\Assignment\\Assignment 1") #set the working directory
+setwd("D:\\Cloud\\Kent_Google Drive\\Kent Class\\MIS 64060 Fundamentals of Machine Learning\\Assignment\\Assignment 1\\Submission") #set the working directory
 library(readr)
-mydata <- read_csv("D:/Cloud/Kent_Google Drive/Kent Class/MIS 64060 Fundamentals of Machine Learning/Assignment/Assignment 1/NFWBS_PUF_2016_data.csv") # rename the dataset for the future reference
+mydata <- read_csv("D:/Cloud/Kent_Google Drive/Kent Class/MIS 64060 Fundamentals of Machine Learning/Assignment/Assignment 1/Submission/NFWBS_PUF_2016_data.csv") # rename the dataset for the future reference
+
 ```
 
 **3. Print out descriptive statistics for a selection of quantitative and categorical variables.**
@@ -37,9 +38,10 @@ stat.desc (mydata$FSscore) # Descriptive statistics (nbr.val, nbr.null, nbr.na, 
 **Solution:**
 ```{r}
 library(dplyr)
-mydata$MILITARY<-recode(mydata$MILITARYHistory, "Refused"=-1, "No"=0, "Yes"=1) # record string value of MILITARYhistory to numeric value
+mydata$MILITARY<-recode(mydata$MILITARYHistory, "Refused"=-1, "No"=0, "Yes"=1) # recode string value of MILITARYhistory to numeric value
 mydata$SWBsum <- mydata$SWB_1 + mydata$SWB_2 + mydata$SWB_3 # creating SWBsum by summing three variables, SWB_1, SWB_2, and SWB_3
 mydata$fpl2 <- mydata$fpl + 3 # transforming the values of variable, fpl, by adding 3.
+
 ```
 
 **5. Plot at least one quantitative variable, and one scatterplot**
