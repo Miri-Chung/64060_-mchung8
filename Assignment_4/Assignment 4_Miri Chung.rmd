@@ -1,0 +1,415 @@
+---
+title: "Assignment4"
+author: "Miri Chung"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+---
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;}
+</style>
+<div class = "blue"> <font size="+1"> <font color="red">
+- The answer to each question is provided in the blue box right below the question.
+</font></font>
+</div>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+dir.create("images")
+```
+
+***
+***
+**Setting the working environment**
+```{r}
+library(readr)
+library(factoextra)
+library(tidyverse)
+library(broom)
+library(clValid)
+library('fastDummies')
+library(flexclust)
+library(dplyr)
+library(ggplot2)
+library(zoo)
+library(reshape2)
+
+
+#data import
+Pharmaceuticals<-read.csv("D:/Cloud/Kent_Google Drive/Kent Class/MIS 64060 Fundamentals of Machine Learning/Assignment/Assignment 4/Pharmaceuticals.csv")
+View(Pharmaceuticals)
+data.frame(colnames(Pharmaceuticals))
+str(Pharmaceuticals)
+```
+
+***
+***
+
+# 1. Clustering with Variables (1-9)
+**Use only the numerical variables (1 to 9) to cluster the 21 firms. Justify the various choices made in conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s) used, the number of clusters formed, and so on.**
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;} 
+
+</style>
+<div class = "blue">
+- Answer: Conclusion - the performance metrics of the current k-means algorithm seem to be better with 5 clusters than with 4. 
+<br/><br/>1.1.	Weights for different variables: The weights for the variables have been assigned equally as I do not have background knowledge in order to determine the relative importance of the variables on industry structure. 
+<br/><br/>1.2. The number of clusters formed: the choice of the number of clusters was driven by the clustering algorithms trying different values for k and comparing the resulting clusters.
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.1. (see the R results [Section 1.2.1])	From the elbow method, I could choose 4, 5, or maybe 6 clusters.
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.2. (see the R results [Section 1.2.2])	The silhouette method indicates that 5 clusters correspond to the optimal number.
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.3. (see the R results [Section 1.2.3])	According to the NbClust Package, which suggests several ks, the best number of clusters among 4, 5, and 6 cluster options would be k=5. However, the indices applied based on the majority rule are not vary enough (7, 8, and 8 for the k=4, k=5, and k=6, respectively). 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.4. (see the R results [Section 1.2.4])	When running a cluster plot, option k=6 generated two singleton clusters, containing only  a single company. Hence the option, k=6 will not be considered. 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.5. (see the R results [Section 1.2.5])	Between k=4 and k=5, k=5 generated the lower WSS (the sum of the square of the distance from each data point to the cluster center.  Lower is better), and the higher BSS (the sum of the squared distance between cluster centers. higher is better). 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2.6. (see the R results [Section 1.2.6])	According to the Dunn index, k=5 is also the better cluster number as a higher Dunn value is considerably superior as the clusters are better separated between clusters and more compact within clusters. 
+<br/><br/>1.3.	Best variables that are used to separate the clusters: I also checked the variables do the best job of separating the clusters. 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.1. (see the R results [Section 1.3.1])	When k=4, the spread of clusters for Market_Cap, PE_Ratio, ROE, ROA, Asset_Turnover, and Net_Profit_Margin (six variables) is relatively high (the gap value > 2), and not so high for the other variables. 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.3.2. (see the R results [Section 1.3.2])	On the other hand, when k=5, the spread of clusters for Market_Cap, PE_Ratio, ROE, ROA, Asset_Turnover, Rev_Growth, and Net_Profit_Margin (seven variables) is relatively high (the gap value > 2), and not so high for the other variables. 
+Also, the overall spreads of clusters by the variables are higher when K=5 than k=4. 
+
+
+</div>
+
+***
+**Solution:**
+```{r}
+#set the working data
+mydata<-Pharmaceuticals[,c(3:11)] #select numerical variables (1-9)
+View(mydata)
+row.names(mydata)<-Pharmaceuticals[,1]#set row names to the pharmaceutical column
+View(mydata)
+```
+
+*** 
+## Scaling the data
+```{r}
+#Run K-means clustering algorithm
+mydata_scale<-scale(mydata) #scaling the   data frame (z-score)
+View(mydata_scale)
+mydata_Distance<-get_dist(mydata_scale) 
+fviz_dist(mydata_Distance) # Visual representation of the normalized distance between companies. 
+```
+
+*** 
+## Three methods to determine k
+```{r}
+#[Section 1.2.1], Determining k based on "elbow chart"
+fviz_nbclust(mydata_scale, kmeans, method="wss") # returned optimal number: 4, 5, or 6. 
+
+#[Section 1.2.2], Determining k based on "silhouette method"
+fviz_nbclust(mydata_scale, kmeans, method="silhouette") # returned optimal number:5
+
+#[Section 1.2.3], NbClust Package for determining the best number of clusters
+library(NbClust)
+K_Suggestion<- NbClust(mydata_scale[,1:9], min.nc = 4, max.nc =6, method="kmeans")
+```
+
+*** 
+## Run k-means algorithm (k=4)
+```{r}
+#run the k-means algorithm to cluster the companies (k=4) in order to evaluate the clustering quality
+k4<-kmeans(mydata_scale, centers=4, nstart=25) # test run with k=4, and 25 starts (re-run). 
+k4
+
+#[Section 1.2.5]
+cluster4<-data.frame(k4$cluster)
+View(cluster4)
+glance(k4)
+
+#[Section 1.2.6]
+dunn_k4<- dunn(clusters = k4$cluster, Data = mydata_scale) #A higher value is considerably superior. 
+dunn_k4
+fviz_cluster(k4,data=mydata_scale) #Visualize the cluster
+
+#[Section 1.3.1], Best variables that separating the clusters: Contributing variables for cluster spread
+k4$spread<-as.data.frame(t(k4$centers))
+k4$spread$max<-do.call(pmax, k4$spread[1:4])# find the highest value within the row (each financial performance feature) and save the value to "max"
+k4$spread$min<-do.call(pmin, k4$spread[1:4])# find the lowest value within the row (each financial performance feature) and save the value to "min"
+k4$spread$gap<-k4$spread$max-k4$spread$min # calculate the difference between max and min
+k4$spread
+
+```
+
+*** 
+## Run k-means algorithm (k=5)
+```{r}
+#run the k-means algorithm to cluster the companies (k=5) in order to evaluate the clustering quality
+k5<-kmeans(mydata_scale, centers=5, nstart=25) # test run with k=5, and 25 starts (re-run). 
+k5
+
+#[Section 1.2.5]
+cluster5<-data.frame(k5$cluster)
+View(cluster5)
+glance(k5)
+
+#[Section 1.2.6]
+dunn_k5<- dunn(clusters = k5$cluster, Data = mydata_scale) #A higher value is considerably superior. 
+dunn_k5
+fviz_cluster(k5,data=mydata_scale) #Visualize the cluster
+
+#[Section 1.3.2], Best variables that separating the clusters: Contributing variables for cluster spread
+k5$spread<-as.data.frame(t(k5$centers))
+k5$spread$max<-do.call(pmax, k5$spread[1:4]) # find the highest value within the row (each financial performance feature) and save the value to "max"
+k5$spread$min<-do.call(pmin, k5$spread[1:4])# find the lowest value within the row (each financial performance feature) and save the value to "min"
+k5$spread$gap<-k5$spread$max-k5$spread$min# calculate the difference between max and min
+k5$spread
+```
+
+*** 
+## Run k-means algorithm (k=6)
+```{r}
+#run the k-means algorithm to cluster the companies (k=6) in order to evaluate the clustering quality
+k6<-kmeans(mydata_scale, centers=6, nstart=25) # test run with k=6, and 25 starts (re-run). 
+k6
+
+cluster6<-data.frame(k6$cluster)
+View(cluster6)
+glance(k6)
+
+dunn_k6<- dunn(clusters = k6$cluster, Data = mydata_scale)
+dunn_k6
+#[Section 1.2.4]
+fviz_cluster(k6,data=mydata_scale) #Visualize the cluster
+
+#Best variables that separating the clusters: Contributing variables for cluster spread
+k6$spread<-as.data.frame(t(k6$centers))
+k6$spread$max<-do.call(pmax, k6$spread[1:4]) # find the highest value within the row (each financial performance feature) and save the value to "max"
+k6$spread$min<-do.call(pmin, k6$spread[1:4])# find the lowest value within the row (each financial performance feature) and save the value to "min"
+k6$spread$gap<-k5$spread$max-k5$spread$min# calculate the difference between max and min
+k6$spread
+```
+
+***
+***
+
+# 2. Profile of each cluster
+**Interpret the clusters with respect to the numerical variables used in forming the clusters.**
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;}
+</style>
+<div class = "blue">
+- Answer:  
+<br/>2.1.	(see the R results [Section 2.1]) Size of each cluster: Cluster #2 is the largest cluster in terms of the number of companies (eight companies), whereas Cluster #1 is the smallest cluster (two companies). Cluster #3, 4, and 5 are similar in size (four, four, three companies, respectively) 
+<br/><br/>2.2.(see the R results [Section 2.2])	Within-cluster dispersion: From the results of the within-cluster sum of squares, I can see that Cluster 2 has the largest within-cluster sum of squared distance, which is not surprising as Cluster 2 contains the largest number of companies. In comparison, Cluster #1, with two companies, has a smaller within-cluster sum of squared distance. In other words, Cluster #6 is most homogeneous, and Cluster #2 is most heterogeneous compared to other clusters.
+<br/><br/>2.3.	(see the R results [Section 2.3]) Based on the results of visual presentation of cluster centroid (i.e., profile plot), the following characteristics of each cluster have been obtained. Each cluster is characterized as follows: 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 1 – Low net profit margin, High PE Ratio, and low ROE
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 2 – Low beta, High Net profit margin, low PE ratio, Low Revenue growth.
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 3 – Low asset turnover, Low market cap, low PE ratio, and High Revenue growth
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 4 – High asset turnover, Low leverage, High market cap, High ROA, and High ROE
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 5 – High Beta, High leverage, Low market capital, Low revenue growth, and Low ROA
+
+</div>
+
+**Solution:**
+```{r, fig.width=15,fig.height=10}
+k5$cluster
+```
+
+*** 
+##Cluster Size
+```{r}
+#[Section 2.1]
+k5$size
+table(k5$cluster)
+k5$centers
+```
+
+*** 
+## Within-cluster sum of Squares
+```{r}
+#[Section 2.2]
+k5$withinss # Vector of within-cluster sum of squares, one component per cluster.
+dist(k5$centers) #distance between the centers 
+
+```
+
+*** 
+## Plotting profile (centroid) of clusters
+```{r}
+#[Section 2.3], plotting profile plot based on the scaled value (k=5)
+cluster5dimension<-data.frame(k5$centers)
+print(cluster5dimension)#Dimension information (scaled data) (mean value of each attribute)
+cluster5dimensions<-as.data.frame(t(cluster5dimension)) # Transposed the rows and columns
+cluster5dimensions$k5measures <- rownames(cluster5dimensions) 
+cluster5dimensions
+colnames(cluster5dimensions) <- c("cluster 1","cluster 2","cluster 3","cluster 4","cluster 5", "k5measures") # change the column names
+cluster5dimensions <- melt(cluster5dimensions, id.vars=c("k5measures"))
+ggplot(cluster5dimensions, aes(x=k5measures, y=value, color=variable, group=variable)) + geom_line() + geom_point()
+
+#ground work to see the characteristics of each cluster based on the raw values
+mydata_scale_cluster5<-cbind(mydata_scale, cluster5) # attach the cluster number generated based on k=5 to the scaled data set. 
+mydata_cluster5<-cbind(mydata, cluster5) # attach the cluster number generated based on k=5 to the working data set (original variables 1-9). 
+Pharmaceuticals_cluster5<-cbind(Pharmaceuticals, cluster5) # attach the cluster number generated based on k=5 to the original data set. 
+View(mydata_scale_cluster5)
+View(mydata_cluster5)
+View(Pharmaceuticals_cluster5)
+
+```
+
+*** 
+## Characteristics of each cluster
+```{r}
+#Cluster 1 characteristics based on the raw values
+cluster5_1<-filter(mydata_cluster5,k5.cluster==1)
+print(cluster5_1)
+
+#Cluster 2 characteristics based on the raw values
+cluster5_2<-filter(mydata_cluster5,k5.cluster==2)
+print(cluster5_2)
+
+#Cluster 3 characteristics based on the raw values
+cluster5_3<-filter(mydata_cluster5,k5.cluster==3)
+print(cluster5_3)
+
+#Cluster 4 characteristics based on the raw values
+cluster5_4<-filter(mydata_cluster5,k5.cluster==4)
+print(cluster5_4)
+
+#Cluster 5 characteristics based on the raw values
+cluster5_5<-filter(mydata_cluster5,k5.cluster==5)
+print(cluster5_5)
+
+```
+
+***
+***
+
+# 3. Clusters and unused variables (10-12)
+**Is there a pattern in the clusters with respect to the numerical variables (10 to 12)? (those not used in forming the clusters)**
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;}
+</style>
+<div class = "blue">
+- Answer:  3.	As the unused variables (10 – 12) contain only categorical values, I examined the frequency of observations of each level of the variable within clusters. 
+<br/>3.1.	(see the R results [Section 3.1]) Median_Recommondation: Cluster2 includes all levels of the Median_Recommendation variable. Mainly, the “Hold” level is observed with the highest frequency within Cluster 2. Also, Cluster2 is characterized as the only cluster containing “Strong Buy.”
+The “Moderate Buy” is distributed evenly across the clusters, which means the “Moderate Buy” does not represent the characteristic of any cluster.
+<br/><br/>3.2.	(see the R results [Section 3.2]) Location: Even though the “US” is observed across all clusters, the “US” value represents Cluster2, as it shows a distinctively highest frequency. 
+<br/><br/>3.3.	(see the R results [Section 3.3]) Exchange: The results of K-mean clustering did not effectively distinguish the levels of Exchange across the clusters. Cluster 1 – 4 includes only NYSE, whereas Cluster5 contains the same frequency for all three levels (AMEX, NASDAQ, and NYSE). 
+<br/><br/>3.4.	(see the R results [Section 3.4]) In order to compare the clustering results between (1) clusters using variable 1-9 and (2) clusters using variable 10-12, I created the dummy variables for categorical variables (variable 10-12) and ran K-means clustering using the dummy variables. Based on the results, the RandIndex score (i.e., measure of the similarity between two data clusterings) was generated. The result value, 0.058, indicated that the results of two sets of clusters are not similar. 
+
+</div>
+
+
+**Solution:**
+## Subset of categorical variables (10-12)
+```{r}
+#unused variable 10-12
+mydata5_3<-Pharmaceuticals_cluster5[,c(12:15)] # create the dataset (mydata5_3) by selecting the unused variables (categorical variables)
+numericindex5<-data.matrix(mydata5_3) #assign numeric value to the levels of each variable
+colnames(numericindex5) <- c('N.Median_Rec','N.Location','N.Exchange', 'Cluster') #Assign new column name to the created numeric value 
+mydata5_3<-cbind(mydata5_3, numericindex5) #attach the created dataset (numericindex5) to the origincal dataset (mydata5_3)
+View(mydata5_3)
+```
+
+*** 
+## Frequency of each categorical variable within cluster
+```{r}
+#F-table (unused variable vs cluster)
+attach(mydata5_3)
+```
+
+*** 
+### Bar chart of Median_Recommendation 
+```{r}
+#[Section 3.1]
+ftable(Median_Recommendation,k5.cluster) #create a pivot table
+Median_Recommendation<-ftable(Median_Recommendation, k5.cluster) 
+color.names = c("coral4","blueviolet","darkblue","gold") #select the colors for bar chart 
+barplot(Median_Recommendation,beside=T,ylim=c(0,5),xlab="Cluster",ylab="Frequency", names.arg = c("Cluster1", "Cluster2", "Cluster3", "Cluster4", "Cluster5"), col=color.names,axis.lty="solid")
+legend("topright",legend = c("Hold", "Moderate Buy", "Moderate Sell", "Strong Buy"),cex =0.8,fill=color.names,title="Median_Recommendation")
+```
+
+*** 
+### Bar chart of Location 
+```{r}
+#[Section 3.2]
+ftable(Location,k5.cluster) #create a pivot table
+Location<-ftable(Location, k5.cluster)  
+color.names = c("coral4","blueviolet","darkblue","gold", "blue", "deeppink", "grey7") #select the colors for bar chart 
+barplot(Location,beside=T,ylim=c(0,6),xlab="Cluster",ylab="Frequency", names.arg = c("Cluster1", "Cluster2", "Cluster3", "Cluster4", "Cluster5"), col=color.names,axis.lty="solid")
+legend("topright",legend = c("CANADA", "FRANCE", "GERMANY", "IRELAND", "SWITZERLAND", "UK", "US"),cex =0.8,fill=color.names,title="Location")
+```
+
+*** 
+### Bar chart of Exchange 
+```{r}
+#[Section 3.3]
+ftable(Exchange,k5.cluster) #create a pivot table
+Exchange<-ftable(Exchange, k5.cluster)  
+color.names = c("coral4","blueviolet","darkblue") #select the colors for bar chart 
+barplot(Exchange,beside=T,ylim=c(0,9),xlab="Cluster",ylab="Frequency", names.arg = c("Cluster1", "Cluster2", "Cluster3", "Cluster4", "Cluster5"), col=color.names,axis.lty="solid")
+legend("topright",legend = c("AMEX", "NASDAQ", "NYSE"),cex =0.8,fill=color.names,title="Exchange")
+```
+
+*** 
+## Clustering using the categorical variables 
+```{r}
+#[Section 3.4]
+#Compare the clusters generated based on the unused variable only (10 ~ 12) vs. clusters generated with used variables (1 ~ 9)
+data.frame(colnames(mydata5_3))
+mydata5_3 <- dummy_cols(mydata5_3, select_columns = 'Median_Recommendation') # Create the dummy value 
+mydata5_3 <- dummy_cols(mydata5_3, select_columns = 'Location') # Create the dummy value 
+mydata5_3 <- dummy_cols(mydata5_3, select_columns = 'Exchange') # Create the dummy value 
+View(mydata5_3)
+data.frame(colnames(mydata5_3))
+Dummy<-mydata5_3[,c(9:22)] #subset containing only dummy values
+View(Dummy)
+
+#run the k-means algorithm using the unused variables to cluster the companies (k=5)
+Dummy_scale<-scale(Dummy)
+DummyKmeans<-kmeans(Dummy_scale, centers=5, nstart=25)
+DummyKmeans 
+
+#Cluster Information
+Dummycluster<-data.frame(DummyKmeans$cluster) 
+View(Dummycluster)
+
+```
+
+*** 
+## RandIndex
+```{r}
+#F-table (unused cluster vs used cluster)
+clustercomp<-cbind(cluster5, Dummycluster) #Combining two cluster-sets, one with categorical variables (10~12) only, another with numerical variable (1~9) only
+View(clustercomp)
+print(clustercomp)
+attach(clustercomp)
+comparison<-table(k5.cluster,DummyKmeans.cluster) 
+randIndex(comparison) # Measure of the similarity between two data clusterings. Similarity score between -1.0 and 1.0. 1.0 stands for perfect match.
+  
+```
+
+***
+***
+
+# 4. Naming the clusters
+**Provide an appropriate name for each cluster using any or all of the variables in the dataset.**
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;}
+</style>
+<div class = "blue">
+- Answer:  The name of the cluster has been decided based on the best performance index the cluster achieved among clusters. 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 1: PE_Ratio 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 2: Vanilla (Cluster 2 doesn’t show any distinctive qualities/index among clusters)
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 3: Rev_Growth
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 4: Market_Cap
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cluster 5: Leverage
+
+</div>
+
+**Solution:**
+## Plotting profile (centroid) of clusters
+```{r, fig.width=15,fig.height=10}
+##plotting profile plot based on the scaled value (k=5)
+cluster5dimension<-data.frame(k5$centers)
+cluster5dimensions<-as.data.frame(t(cluster5dimension))
+cluster5dimensions$k5measures <- rownames(cluster5dimensions)
+colnames(cluster5dimensions) <- c("cluster 1","cluster 2","cluster 3","cluster 4","cluster 5", "k5measures")
+cluster5dimensions <- melt(cluster5dimensions, id.vars=c("k5measures"))
+ggplot(cluster5dimensions, aes(x=k5measures, y=value, color=variable, group=variable)) + geom_line() + geom_point()
+```
