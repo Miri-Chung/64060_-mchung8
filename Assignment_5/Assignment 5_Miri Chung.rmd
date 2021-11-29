@@ -1,0 +1,370 @@
+---
+title: "Assignment5"
+author: "Miri Chung"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+---
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;}
+</style>
+<div class = "blue"> <font size="+1"> <font color="red">
+- The answer to each question is provided in the blue box right below the question.
+</font></font>
+</div>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+dir.create("images")
+```
+
+***
+***
+**Setting the working environment**
+```{r}
+library(readr)
+library(cluster)
+library(factoextra)
+library(NbClust)
+library(FactoMineR)
+library(pdist)
+library(flexclust)
+library(purrr)
+
+
+#data import
+cereals<-read.csv("D:/Cloud/Kent_Google Drive/Kent Class/MIS 64060 Fundamentals of Machine Learning/Assignment/Assignment 5/Cereals.csv")
+View(cereals)
+
+```
+
+***
+***
+
+## 1. Run hierarchical clustering. Exam the best linkage method.
+**Apply hierarchical clustering to the data using Euclidean distance to the normalized measurements. Use Agnes to compare the clustering from single linkage, complete linkage, average linkage, and Ward. Choose the best method. **
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;} 
+
+</style>
+<div class = "blue">
+- Answer: The best method to use for clustering would be determined based on a numerical measure of the strength of the clustering structure, which is the agglomerative coefficient. Among four methods, the ”Wards” approach provides the strongest clustering structure (AC= .9046042).
+
+</div>
+
+***
+**Solution:**
+```{r}
+#set the working data
+row.names(cereals)<-cereals[,1]#set row names to the cereals column
+data.frame(colnames(cereals))
+table(is.na(cereals))#check the missing data
+mydata<-na.omit(cereals)#remove the missing data from the dataset
+table(is.na(mydata))
+mydata<-mydata[,c(4:16)]#use a data frame only with numeric values -> variables that are nutritional information, store display, and consumer ratings
+```
+
+*** 
+### Scaling the data. 
+```{r}
+scaledmydata<-scale(mydata)#scaling the data, normalized measurements
+View(scaledmydata) 
+```
+
+### Apply hierarchical clustering to the data using Euclidean distance
+```{r}
+d<-dist(scaledmydata,method="euclidean") # compute distance measure, Dissimilarity matrix using Euclidean distance
+hc_complete<-hclust(d,method="complete") #Hierarchical clustering using Complete Linkage
+plot(hc_complete, cex=0.6, hang=-1) #Plot the obtained dendrogram
+```
+
+
+*** 
+### Use Agnes to compare the clustering from four linkage methods. 
+```{r}
+hc_single<-agnes(d,method="single") #Hierarchical clustering using Single Linkage
+hc_single$ac #Agglomerative coefficient of hc_single
+hc_complete<-agnes(d,method="complete")#Hierarchical clustering using Complete Linkage
+hc_complete$ac#Agglomerative coefficient of hc_complete
+hc_average<-agnes(d,method="average")#Hierarchical clustering using Average Linkage
+hc_average$ac#Agglomerative coefficient of hc_average
+hc_ward<-agnes(d,method="ward")#Hierarchical clustering using Ward's method
+hc_ward$ac#Agglomerative coefficient of hc_ward
+```
+
+
+***
+***
+
+## 2. Determine the optimal number of clusters 
+**How many clusters would you choose?**
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;}
+</style>
+<div class = "blue">
+- Answer: Conclusion: I selected a five-cluster model based on the following three methods.  
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. "elbow chart": the method returned optimal number: 3, 4, or 5.
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. "silhouette method": The average silhouette width kept increasing until a number of 10 clusters was reached. However, I observed that from five clusters the increase in the gap became moderate. In other words, choosing a five-cluster model would sufficient considering a good compromise between accuracy and parsimony.
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. "PCA method": the method returned 5 Principal Components that capture more than 80% of the variance. 
+</div>
+
+**Solution:Three methods to determine k**
+
+### Determining k based on "elbow chart"
+```{r}
+fviz_nbclust(scaledmydata, FUN = hcut, method="wss") # returned optimal number: 4, 5, and 6
+```
+
+*** 
+### Determining k based on "silhouette method"
+```{r}
+fviz_nbclust(scaledmydata, FUN = hcut, method="silhouette") # returned optimal number:5
+```
+
+*** 
+### Determining k based on "PCA Package"
+```{r}
+nbclust <- PCA(scaledmydata,  graph = FALSE)
+fviz_screeplot(nbclust, addlabels = TRUE, ylim = c(0, 50)) # returned optimal number:5
+```
+
+*** 
+### Compute hierarchical clustering using Ward method 
+```{r}
+set.seed(88)
+hccluster<-hclust(d,method="ward.D2")#ward.D2 corresponds to the ward   
+```
+
+*** 
+### Visualize the clusters (k=5)
+```{r}
+hccluster_5<-cutree(hccluster,k=5)
+table(hccluster_5)
+plot(hccluster, cex=0.6, hang=-1)#Plot the obtained dendrogram
+rect.hclust(hccluster,k=5,border = 1:4)
+# fviz_cluster function to visualize the clusters
+fviz_cluster(list(data = mydata, cluster = hccluster_5, repel = TRUE)) +
+  theme_minimal()
+```
+
+*** 
+### Cluster assignment 
+```{r}
+membership_5<-cutree(hccluster, k=5)
+head(membership_5)
+```
+
+*** 
+### Centroid (mean value of each attribute)
+```{r}
+hccentroid_5<-data.frame(aggregate(scaledmydata,by=list(clusters=membership_5),mean))
+hccentroid_5
+```
+
+***
+***
+
+## 3. Validating the stability of the model
+**Comment on the structure of the clusters and on their stability. **
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;}
+</style>
+<div class = "blue">
+- Answer: When the clustering reference (Partition A) is made of the larger data set, the stability of cluster assignment for Partition B becomes more reliable and stable. 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. When dividing the reference dataset (Partition A) and test dataset (Partition B) into 70%:30%, the consistency between the clustering assignment on test dataset (Partition B) based on the reference (Partition A) and all the dataset becomes perfect. From the pivot table depicting the cluster each brand belongs to, the assigned clusters (row and column) to each brand are exactly the same. The ARI value is 1, meaning the perfect match. 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. When dividing the reference dataset (Partition A) and test dataset (Partition B) into 50%:50%, the accuracy of cluster assignment based on the reference (Partition A) becomes low (84.5%), meaning 15% of records are misclustered. 
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. When dividing the reference dataset (Partition A) and test dataset (Partition B) into 30%:70%, the accuracy of cluster assignment based on the reference (Partition A) becomes worse (69.3%). 
+</div>
+
+**Solution:**
+
+## Case 1: Partition A (70%) and B (30%)
+```{r}
+#Partition the data into A (70%) and B (30%) sets>
+mydata_hc5<-cbind(scaledmydata, hccluster_5)
+
+nrow(mydata_hc5)
+subsetA<-data.frame(mydata_hc5[c(1:51),]) 
+head(subsetA)
+subsetB<-data.frame(mydata_hc5[c(52:74),])
+head(subsetB)
+```
+
+*** 
+### Assign the cluster to Dataset B based on the cluster centroids from A
+```{r}
+#Centroid (subsetA) (mean value of each attribute)
+subsetA_centroid<-data.frame(aggregate(subsetA,by=list(clusters=subsetA$hccluster_5),mean))
+View(subsetA_centroid)
+
+reference<-subsetA_centroid[,-1]
+reference<-reference[,-14]
+View(reference)
+input<-subsetB[,-14]
+View(input)
+
+dists <- pdist(input, reference) #calculate Euclidean distance from each record to the centroid of each cluster
+as.matrix(dists) 
+Dist_Cluster<-data.frame(as.matrix(dists)) #save the results in dataframe format
+View(Dist_Cluster)
+row.names(Dist_Cluster)<-row.names(subsetB) #set row names to the subsetB column
+names(Dist_Cluster)[names(Dist_Cluster) == 'X1'] <- 'Dist_Cluster1' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X2'] <- 'Dist_Cluster2' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X3'] <- 'Dist_Cluster3' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X4'] <- 'Dist_Cluster4' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X5'] <- 'Dist_Cluster5' #change column name
+Dist_Cluster$min_dist<- apply(Dist_Cluster, 1, function(x) colnames(Dist_Cluster)[which.min(x)]) # map column names to row minimum value
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster1"] <- "1" #indexing the new cluster
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster2"] <- "2" 
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster3"] <- "3" 
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster4"] <- "4" 
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster5"] <- "5" 
+head(Dist_Cluster)
+```
+
+*** 
+### Assess the consistency of the cluster assignments, compared to the assignments based on all the data. 
+```{r}
+#compare the cluster assignment based on the centroid of Subset A to the assignments based on all the data
+ftable(subsetB$hccluster_5,Dist_Cluster$new_cluster) 
+
+comparison<-table(subsetB$hccluster_5,Dist_Cluster$new_cluster) 
+randIndex(comparison) # Measure of the similarity between two data clusterings. Similarity score between -1.0 and 1.0. 1.0 stands for perfect match
+
+```
+
+## Case 2: Partition A (50%) and B (50%)
+```{r}
+#Partition the data into A (50%) and B (50%) sets>
+mydata_hc5<-cbind(scaledmydata, hccluster_5)
+
+nrow(mydata_hc5)
+subsetA<-data.frame(mydata_hc5[c(1:37),]) 
+head(subsetA)
+subsetB<-data.frame(mydata_hc5[c(38:74),])
+head(subsetB)
+```
+
+*** 
+### Assign the cluster to Dataset B based on the cluster centroids from A
+```{r}
+#Centroid (subsetA) (mean value of each attribute)
+subsetA_centroid<-data.frame(aggregate(subsetA,by=list(clusters=subsetA$hccluster_5),mean))
+View(subsetA_centroid)
+
+reference<-subsetA_centroid[,-1]
+reference<-reference[,-14]
+View(reference)
+input<-subsetB[,-14]
+View(input)
+
+dists <- pdist(input, reference) #calculate Euclidean distance from each record to the centroid of each cluster
+as.matrix(dists) 
+Dist_Cluster<-data.frame(as.matrix(dists)) #save the results in dataframe format
+View(Dist_Cluster)
+row.names(Dist_Cluster)<-row.names(subsetB) #set row names to the subsetB column
+names(Dist_Cluster)[names(Dist_Cluster) == 'X1'] <- 'Dist_Cluster1' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X2'] <- 'Dist_Cluster2' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X3'] <- 'Dist_Cluster3' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X4'] <- 'Dist_Cluster4' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X5'] <- 'Dist_Cluster5' #change column name
+Dist_Cluster$min_dist<- apply(Dist_Cluster, 1, function(x) colnames(Dist_Cluster)[which.min(x)]) # map column names to row minimum value
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster1"] <- "1" #indexing the new cluster
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster2"] <- "2" 
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster3"] <- "3" 
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster4"] <- "4" 
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster5"] <- "5" 
+head(Dist_Cluster)
+```
+
+*** 
+### Assess the consistency of the cluster assignments, compared to the assignments based on all the data.  
+```{r}
+#compare the cluster assignment based on the centroid of Subset A to the assignments based on all the data
+ftable(subsetB$hccluster_5,Dist_Cluster$new_cluster) 
+
+comparison<-table(subsetB$hccluster_5,Dist_Cluster$new_cluster) 
+randIndex(comparison) # Measure of the similarity between two data clusterings. Similarity score between -1.0 and 1.0. 1.0 stands for perfect match
+
+```
+
+## Case 3: Partition A (30%) and B (70%)
+```{r}
+#Partition the data into A (30%) and B (70%) sets>
+mydata_hc5<-cbind(scaledmydata, hccluster_5)
+
+nrow(mydata_hc5)
+subsetA<-data.frame(mydata_hc5[c(1:22),]) 
+head(subsetA)
+subsetB<-data.frame(mydata_hc5[c(23:74),])
+head(subsetB)
+```
+
+*** 
+### Assign the cluster to Dataset B based on the cluster centroids from A
+```{r}
+#Centroid (subsetA) (mean value of each attribute)
+subsetA_centroid<-data.frame(aggregate(subsetA,by=list(clusters=subsetA$hccluster_5),mean))
+View(subsetA_centroid)
+
+reference<-subsetA_centroid[,-1]
+reference<-reference[,-14]
+View(reference)
+input<-subsetB[,-14]
+View(input)
+
+dists <- pdist(input, reference) #calculate Euclidean distance from each record to the centroid of each cluster
+as.matrix(dists) 
+Dist_Cluster<-data.frame(as.matrix(dists)) #save the results in dataframe format
+View(Dist_Cluster)
+row.names(Dist_Cluster)<-row.names(subsetB) #set row names to the subsetB column
+names(Dist_Cluster)[names(Dist_Cluster) == 'X1'] <- 'Dist_Cluster1' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X2'] <- 'Dist_Cluster2' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X3'] <- 'Dist_Cluster3' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X4'] <- 'Dist_Cluster4' #change column name
+names(Dist_Cluster)[names(Dist_Cluster) == 'X5'] <- 'Dist_Cluster5' #change column name
+Dist_Cluster$min_dist<- apply(Dist_Cluster, 1, function(x) colnames(Dist_Cluster)[which.min(x)]) # map column names to row minimum value
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster1"] <- "1" #indexing the new cluster
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster2"] <- "2" 
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster3"] <- "3" 
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster4"] <- "4" 
+Dist_Cluster$new_cluster[Dist_Cluster$min_dist == "Dist_Cluster5"] <- "5" 
+head(Dist_Cluster)
+```
+
+*** 
+### Assess the consistency of the cluster assignments, compared to the assignments based on all the data. 
+```{r}
+#compare the cluster assignment based on the centroid of Subset A to the assignments based on all the data
+ftable(subsetB$hccluster_5,Dist_Cluster$new_cluster) 
+
+comparison<-table(subsetB$hccluster_5,Dist_Cluster$new_cluster) 
+randIndex(comparison) # Measure of the similarity between two data clusterings. Similarity score between -1.0 and 1.0. 1.0 stands for perfect match
+
+```
+
+***
+***
+
+## 4. Decision whether to normalize the data
+**The elementary public schools would like to choose a set of cereals to include in their daily cafeterias. Every day a different cereal is offered, but all cereals should support a healthy diet. For this goal, you are requested to find a cluster of “healthy cereals.” Should the data be normalized? If not, how should they be used in the cluster analysis?**
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 10px;}
+</style>
+<div class = "blue">
+- Answer: It is common to normalize all the variables before performing a clustering, especially when the clustering process uses Euclidean distance calculation to determine the proximity of features; the measure computed in Euclidean distance between two entities is highly sensitive to variations within the magnitude or scales from the attributes. As normalization gives the same importance to all the variables (i.e., converting all measurements to the same scale and give them equal weight), it would prevent variables with larger scales from dominating how clusters are defined. 
+<br/> 
+<br/> Although it is customary to normalize continuous measurements before computing the distance, the key idea of clustering analysis is to characterize the clusters in ways that would be useful for the aims of the analysis. Hence, unequal weighting should be considered if a decision-maker wants the clusters to depend more on certain measurements and less on others; when certain variables are considered as more important in defining the resulting cluster, one must assign higher weights for the variables during the clustering processes so the variables can have a greater influence on the results. For example, in the context of selecting “healthy cereals” cluster(s), if the decision-maker believes that the amount of a sodium intake is critical in defining "healthy" cereals and should be controlled to be "healthy", the author should assign higher weights or larger scale for the “sodium” attribute so it can cause enhancement of the feature of the dataset by increasing the weight related to the sodium attribute. The issue to consider in using the weight method is to figure out what represents a good measure of distance between entities to fulfill the aims of the analysis. 
+<br/> 
+<br/> Another consideration in deciding whether to normalize the data would be whether the attributes in the dataset are comparable each other. If the dataset is mixed, where each attribute is entirely different (say, income and body weight), has different units attached ($, lb, km ...) then these values aren't comparable anyway. In this case, normalization is a best practice to give equal weight to them when measuring a distance from each other. In the nutrition data of the cereals situation, however, the variables are relatively well-defined in terms of comparable units (g, or mg). Hence a normalization would not be necessary for the sake of removing the units. 
+<br/> 
+<br/> In conclusion, as the decision-makers want to form a cereal cluster where “healthy” aspects to be more salient, they may give nutrition attributes larger magnitudes and more importance by not normalizing the data. The validation of the procedure that uses unnormalizing data will be done by exploring the characteristics of each cluster in results and by judging if the interpretation of the resulting clusters is reasonable based on the summary statistics from each cluster on each measurement.
+</div>
+
+
